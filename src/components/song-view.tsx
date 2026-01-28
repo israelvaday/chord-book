@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Song, search, getArtistSongs } from '@/lib/api'
 import { useStore } from '@/lib/store'
 import { LyricsContent } from './lyrics-content'
+import { TabContent } from './tab-content'
 import { PlayerControls } from './player-controls'
 import { ChordDiagram } from './chord-diagram'
 import { Badge } from '@/components/ui/badge'
@@ -144,13 +145,13 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
         </div>
       )}
 
-      {/* Lyrics Content - Full Height, No Max Height */}
+      {/* Lyrics/Tab Content - Full Height, No Max Height */}
       <Card className="bg-zinc-900/80 border-emerald-500/20">
         <CardHeader className="border-b border-zinc-800 bg-emerald-500/5">
           <CardTitle className="flex items-center gap-2 text-emerald-400">
             <Music className="h-5 w-5" />
-            Lyrics & Chords
-            {hasChordDiagrams && (
+            {isChord ? 'Lyrics & Chords' : 'Guitar Tab'}
+            {isChord && hasChordDiagrams && (
               <Badge variant="secondary" className="ml-2 text-xs">
                 Click chords to see diagrams
               </Badge>
@@ -158,11 +159,15 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <LyricsContent 
-            content={song.content || ''} 
-            onChordClick={hasChordDiagrams ? handleChordClick : undefined}
-            chordDiagrams={song.chord_diagrams}
-          />
+          {isChord ? (
+            <LyricsContent 
+              content={song.content || ''} 
+              onChordClick={hasChordDiagrams ? handleChordClick : undefined}
+              chordDiagrams={song.chord_diagrams}
+            />
+          ) : (
+            <TabContent content={song.content || ''} />
+          )}
         </CardContent>
       </Card>
 
