@@ -7,6 +7,7 @@ export interface Song {
   rating?: number
   votes?: number
   content_type: 'chord' | 'tab'
+  tab_type?: 'Tabs' | 'Chords' | 'Pro' | 'Bass' | 'Ukulele' | 'Power' | 'Drum'
   content?: string
   chord_diagrams?: Record<string, ChordDiagram>
 }

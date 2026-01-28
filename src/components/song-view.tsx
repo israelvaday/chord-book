@@ -25,7 +25,9 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
   const [activeChord, setActiveChord] = useState<string | null>(null)
 
   const favorite = isFavorite(song.tab_id)
-  const isChord = song.content_type === 'chord'
+  // Use tab_type to determine if it's actual tablature or chord sheet
+  const isActualTab = song.tab_type === 'Tabs' || song.tab_type === 'Bass' || song.tab_type === 'Drum'
+  const isChord = song.content_type === 'chord' || (!isActualTab && song.content_type === 'tab')
   const hasChordDiagrams = isChord && song.chord_diagrams && Object.keys(song.chord_diagrams).length > 0
 
   // Load suggested songs from same artist
@@ -97,11 +99,11 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
               variant="outline" 
               className={cn(
                 "text-sm",
-                isChord ? "border-emerald-500/50 text-emerald-400" : "border-amber-500/50 text-amber-400"
+                isActualTab ? "border-amber-500/50 text-amber-400" : "border-emerald-500/50 text-emerald-400"
               )}
             >
               <Music className="h-3 w-3 mr-1" />
-              {isChord ? 'Chords' : 'Tab'}
+              {song.tab_type || (isChord ? 'Chords' : 'Tab')}
             </Badge>
             
             {song.rating && (
@@ -150,8 +152,8 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
         <CardHeader className="border-b border-zinc-800 bg-emerald-500/5">
           <CardTitle className="flex items-center gap-2 text-emerald-400">
             <Music className="h-5 w-5" />
-            {isChord ? 'Lyrics & Chords' : 'Guitar Tab'}
-            {isChord && hasChordDiagrams && (
+            {isActualTab ? 'Guitar Tablature' : 'Lyrics & Chords'}
+            {!isActualTab && hasChordDiagrams && (
               <Badge variant="secondary" className="ml-2 text-xs">
                 Click chords to see diagrams
               </Badge>
@@ -159,14 +161,14 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          {isChord ? (
+          {isActualTab ? (
+            <TabContent content={song.content || ''} />
+          ) : (
             <LyricsContent 
               content={song.content || ''} 
               onChordClick={hasChordDiagrams ? handleChordClick : undefined}
               chordDiagrams={song.chord_diagrams}
             />
-          ) : (
-            <TabContent content={song.content || ''} />
           )}
         </CardContent>
       </Card>
