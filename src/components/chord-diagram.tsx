@@ -5,16 +5,23 @@ import { ChordDiagram as ChordDiagramType } from '@/lib/api'
 interface Props {
   chord: string
   diagram: ChordDiagramType
+  size?: 'normal' | 'large'
 }
 
-export function ChordDiagram({ chord, diagram }: Props) {
+export function ChordDiagram({ chord, diagram, size = 'normal' }: Props) {
   if (!diagram) return null
   const { frets, barres, baseFret } = diagram
 
+  const isLarge = size === 'large'
+  const width = isLarge ? 180 : 90
+  const height = isLarge ? 220 : 110
+  const viewBox = "0 0 100 120"
+  const scale = isLarge ? 2 : 1
+
   return (
-    <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 p-4 rounded-xl shadow-lg border border-emerald-500/30 hover:border-emerald-400/60 transition-all hover:scale-105 min-w-[110px]">
-      <div className="text-center font-bold text-emerald-400 mb-3 text-lg">{chord}</div>
-      <svg width="90" height="110" viewBox="0 0 100 120" className="mx-auto">
+    <div className={`bg-gradient-to-br from-zinc-800 to-zinc-900 p-4 rounded-xl shadow-lg border border-emerald-500/30 hover:border-emerald-400/60 transition-all ${isLarge ? 'min-w-[200px]' : 'min-w-[110px]'}`}>
+      <div className={`text-center font-bold text-emerald-400 mb-3 ${isLarge ? 'text-2xl' : 'text-lg'}`}>{chord}</div>
+      <svg width={width} height={height} viewBox={viewBox} className="mx-auto">
         {/* Nut or fret number */}
         {baseFret === 1 ? (
           <rect x="15" y="20" width="70" height="5" fill="#e4e4e7" rx="2" />
@@ -44,6 +51,17 @@ export function ChordDiagram({ chord, diagram }: Props) {
           return <circle key={i} cx={15+i*14} cy={22+(f-0.5)*20} r="7" fill="#10b981" />
         })}
       </svg>
+      
+      {/* Finger numbers for large view */}
+      {isLarge && (
+        <div className="flex justify-center gap-2 mt-3 text-xs text-zinc-400">
+          {frets.map((f, i) => (
+            <span key={i} className="w-5 text-center">
+              {f === -1 ? 'x' : f === 0 ? 'o' : f}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
