@@ -4,12 +4,16 @@ import { useMemo } from 'react'
 import { transposeChord } from '@/lib/transpose'
 import { useStore } from '@/lib/store'
 import { ChordDiagram as ChordDiagramType } from '@/lib/api'
+import { getChordPositions } from '@/lib/chord-library'
 
 interface Props {
   content: string
   onChordClick?: (chord: string) => void
   chordDiagrams?: Record<string, ChordDiagramType>
 }
+
+// Minimum character spacing between chords to prevent overlap
+const MIN_CHORD_SPACING = 4
 
 export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   const { fontSize, showChords, transpose } = useStore()
@@ -18,44 +22,92 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   const lines = useMemo(() => {
     if (!content) return []
     
-    // Handle [tab]...[/tab] sections
+    // Handle [tab]...[/tab] sections - remove tags but keep content
     let parsed = content.replace(/\[tab\]([\s\S]*?)\[\/tab\]/g, '$1')
     
-    // Split into lines
-    const rawLines = parsed.split('\n')
+    // Split into lines and clean up \r
+    const rawLines = parsed.split('\n').map(l => l.replace(/\r/g, ''))
     
-    return rawLines.map(line => {
-      const parts: { type: 'text' | 'chord', content: string, position: number }[] = []
-      let lastIndex = 0
+    // Process lines - merge chord-only lines with following lyric lines
+    const processedLines: { text: string, chords: { chord: string, position: number }[] }[] = []
+    let pendingChords: { chord: string, position: number }[] = []
+    
+    for (const line of rawLines) {
       const chordRegex = /\[ch\](.*?)\[\/ch\]/g
       let match
+      let lastIndex = 0
       let textWithoutChords = ''
       const chords: { chord: string, position: number }[] = []
       
       while ((match = chordRegex.exec(line)) !== null) {
-        // Add text before this chord
         const textBefore = line.slice(lastIndex, match.index)
         textWithoutChords += textBefore
-        
-        // Store chord with its position in the text
         const transposedChord = transposeChord(match[1], transpose)
         chords.push({ chord: transposedChord, position: textWithoutChords.length })
-        
         lastIndex = match.index + match[0].length
       }
-      
-      // Add remaining text
       textWithoutChords += line.slice(lastIndex)
       
-      return { text: textWithoutChords, chords }
-    })
+      // Check if this line is chord-only (has chords but text is just whitespace)
+      const isChordOnlyLine = chords.length > 0 && textWithoutChords.trim() === ''
+      // Check if this line is lyric-only (no chords, has actual text)
+      const isLyricOnlyLine = chords.length === 0 && textWithoutChords.trim() !== ''
+      
+      if (isChordOnlyLine) {
+        // Store these chords for the next line
+        pendingChords = chords
+      } else if (isLyricOnlyLine && pendingChords.length > 0) {
+        // Combine pending chords with this lyric line
+        processedLines.push({ text: textWithoutChords, chords: pendingChords })
+        pendingChords = []
+      } else {
+        // Normal line - flush any pending chords first
+        if (pendingChords.length > 0) {
+          processedLines.push({ text: '', chords: pendingChords })
+          pendingChords = []
+        }
+        processedLines.push({ text: textWithoutChords, chords })
+      }
+    }
+    
+    // Don't forget any trailing pending chords
+    if (pendingChords.length > 0) {
+      processedLines.push({ text: '', chords: pendingChords })
+    }
+    
+    return processedLines
   }, [content, transpose])
+
+  // Adjust chord positions to prevent overlap
+  const adjustChordPositions = (chords: { chord: string, position: number }[]): { chord: string, position: number }[] => {
+    if (chords.length === 0) return chords
+    
+    const adjusted = [...chords]
+    
+    for (let i = 1; i < adjusted.length; i++) {
+      const prevChord = adjusted[i - 1]
+      const currChord = adjusted[i]
+      const prevChordWidth = prevChord.chord.length + MIN_CHORD_SPACING
+      const minPosition = prevChord.position + prevChordWidth
+      
+      if (currChord.position < minPosition) {
+        adjusted[i] = { ...currChord, position: minPosition }
+      }
+    }
+    
+    return adjusted
+  }
 
   if (!content) {
     return <span className="text-zinc-400">No content available</span>
   }
 
-  const hasClickableChords = onChordClick && chordDiagrams
+  // Check if chord has a diagram available (from API or chord library)
+  const hasChordDiagram = (chord: string): boolean => {
+    if (chordDiagrams?.[chord]) return true
+    const positions = getChordPositions(chord)
+    return positions.length > 0
+  }
 
   return (
     <div 
@@ -65,14 +117,16 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       {lines.map((line, lineIndex) => {
         // Check if this line has chords
         const hasChords = showChords && line.chords.length > 0
+        // Adjust positions to prevent overlap
+        const adjustedChords = hasChords ? adjustChordPositions(line.chords) : []
         
         return (
           <div key={lineIndex} className="min-h-[1.5em]">
             {/* Chord line above */}
             {hasChords && (
               <div className="text-emerald-400 font-bold h-8 relative select-none">
-                {line.chords.map((c, i) => {
-                  const isClickable = hasClickableChords && chordDiagrams?.[c.chord]
+                {adjustedChords.map((c, i) => {
+                  const isClickable = onChordClick && hasChordDiagram(c.chord)
                   return (
                     <span
                       key={i}

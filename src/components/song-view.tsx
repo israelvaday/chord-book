@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Heart, Star, Users, ChevronRight, Music, Share2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getChordPositions } from '@/lib/chord-library'
 
 interface Props {
   song: Song
@@ -23,12 +24,26 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
   const { favorites, toggleFavorite, isFavorite } = useStore()
   const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([])
   const [activeChord, setActiveChord] = useState<string | null>(null)
+  // Track position index for each chord separately
+  const [chordPositions, setChordPositions] = useState<Record<string, number>>({})
 
   const favorite = isFavorite(song.tab_id)
-  // Use tab_type to determine if it's actual tablature or chord sheet
-  const isActualTab = song.tab_type === 'Tabs' || song.tab_type === 'Bass' || song.tab_type === 'Drum'
-  const isChord = song.content_type === 'chord' || (!isActualTab && song.content_type === 'tab')
-  const hasChordDiagrams = isChord && song.chord_diagrams && Object.keys(song.chord_diagrams).length > 0
+  
+  // Determine content type by:
+  // 1. tab_type containing "Tabs" (e.g., "Tabs", "Bass Tabs") = actual tablature
+  // 2. tab_type === "Chords" = chord sheet
+  // 3. Content with [ch] tags = chord sheet (has chord names to parse)
+  // 4. Content with e|--- B|--- patterns = actual tablature
+  const hasChordTags = song.content?.includes('[ch]') || false
+  const hasTabNotation = /[eEBGDA]\|[-0-9h~pbr\/\\x]+/.test(song.content || '')
+  const tabTypeIsTab = song.tab_type?.toLowerCase().includes('tab') && song.tab_type !== 'Chords'
+  
+  // It's actual tab if: tab_type says Tabs/Bass Tabs, OR content has tab notation without chord tags
+  const isActualTab = tabTypeIsTab || (hasTabNotation && !hasChordTags)
+  // It's chord sheet if: has [ch] tags, or tab_type is "Chords", or content_type is "chord"
+  const isChord = hasChordTags || song.tab_type === 'Chords' || song.content_type === 'chord'
+  // Now we have our own chord library, so all chord sheets can show diagrams
+  const hasChordDiagrams = isChord
 
   // Load suggested songs from same artist
   useEffect(() => {
@@ -58,9 +73,17 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
   }
 
   const handleChordClick = (chord: string) => {
-    if (hasChordDiagrams && song.chord_diagrams?.[chord]) {
+    // Check if chord has positions in our library or API
+    const apiDiagram = song.chord_diagrams?.[chord]
+    const positions = getChordPositions(chord, apiDiagram)
+    
+    if (positions.length > 0) {
       setActiveChord(chord)
     }
+  }
+
+  const handlePositionChange = (chord: string, index: number) => {
+    setChordPositions(prev => ({ ...prev, [chord]: index }))
   }
 
   return (
@@ -127,7 +150,7 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
       <PlayerControls />
 
       {/* Chord Popup Modal */}
-      {activeChord && hasChordDiagrams && song.chord_diagrams?.[activeChord] && (
+      {activeChord && hasChordDiagrams && (
         <div 
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
           onClick={() => setActiveChord(null)}
@@ -142,7 +165,14 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
             >
               <X className="h-6 w-6" />
             </button>
-            <ChordDiagram chord={activeChord} diagram={song.chord_diagrams[activeChord]} size="large" />
+            <ChordDiagram 
+              chord={activeChord} 
+              diagram={song.chord_diagrams?.[activeChord]} 
+              size="large"
+              positionIndex={chordPositions[activeChord] || 0}
+              onPositionChange={(index) => handlePositionChange(activeChord, index)}
+              showNavigation={true}
+            />
           </div>
         </div>
       )}

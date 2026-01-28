@@ -13,7 +13,6 @@ import {
   Home, Flame, Mic2, Shuffle, Music, FileText, Guitar, 
   Search, Star, TrendingUp, Sparkles, Zap, User, ArrowLeft, X
 } from 'lucide-react'
-import { autocomplete } from '@/lib/api'
 
 export default function HomePage() {
   const [stats, setStats] = useState<Stats | null>(null)
@@ -25,10 +24,10 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState<'home' | 'top100' | 'artists' | 'search' | 'artist' | 'song'>('home')
   const [searchQuery, setSearchQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<{ artists: string[], songs: { song: string, artist: string }[] }>({ artists: [], songs: [] })
+  const [suggestions, setSuggestions] = useState<Song[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   
-  const { currentSong, setCurrentSong, filter, setFilter } = useStore()
+  const { currentSong, setCurrentSong } = useStore()
 
   // Load initial data
   useEffect(() => {
@@ -36,15 +35,15 @@ export default function HomePage() {
     getGenres().then(setGenres)
   }, [])
 
-  // Autocomplete
+  // Autocomplete using search API
   useEffect(() => {
     if (searchQuery.length < 2) {
-      setSuggestions({ artists: [], songs: [] })
+      setSuggestions([])
       return
     }
     const timer = setTimeout(async () => {
-      const data = await autocomplete(searchQuery)
-      setSuggestions(data)
+      const results = await search(searchQuery, 'all', 8)
+      setSuggestions(results)
     }, 300)
     return () => clearTimeout(timer)
   }, [searchQuery])
@@ -54,7 +53,7 @@ export default function HomePage() {
     setLoading(true)
     setView('top100')
     setCurrentSong(null)
-    const songs = await getTop100(filter)
+    const songs = await getTop100('all')
     setTop100(songs)
     setLoading(false)
   }
@@ -74,7 +73,7 @@ export default function HomePage() {
     setCurrentSong(null)
     setSearchQuery(query)
     setShowSuggestions(false)
-    const results = await search(query, filter, 100)
+    const results = await search(query, 'all', 100)
     setSearchResults(results)
     setLoading(false)
   }
@@ -85,7 +84,7 @@ export default function HomePage() {
     setCurrentSong(null)
     setShowSuggestions(false)
     setSearchQuery('')
-    const data = await getArtistSongs(name, filter)
+    const data = await getArtistSongs(name, 'all')
     setArtistSongs({ 
       artist: data.artist, 
       songs: data.all_results?.sort((a, b) => (b.rating || 0) - (a.rating || 0)) || [] 
@@ -103,7 +102,7 @@ export default function HomePage() {
 
   const loadRandom = async () => {
     setLoading(true)
-    const song = await getRandom(filter)
+    const song = await getRandom('all')
     if (song?.tab_id) {
       const fullSong = await getSong(song.tab_id, song.content_type || 'chord')
       setCurrentSong({ ...fullSong, content_type: song.content_type || 'chord' })
@@ -126,7 +125,7 @@ export default function HomePage() {
     }
   }
 
-  const hasSuggestions = suggestions.artists.length > 0 || suggestions.songs.length > 0
+  const hasSuggestions = suggestions.length > 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 dark overflow-x-hidden">
@@ -185,41 +184,33 @@ export default function HomePage() {
             {/* Suggestions Dropdown */}
             {showSuggestions && searchQuery.length >= 2 && hasSuggestions && (
               <div className="absolute left-1/2 -translate-x-1/2 w-full max-w-2xl mt-2 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                {suggestions.artists.length > 0 && (
-                  <>
-                    <div className="px-4 py-2 text-xs font-semibold text-zinc-400 bg-zinc-800/50 flex items-center gap-2">
-                      <User className="h-3 w-3" /> Artists
-                    </div>
-                    {suggestions.artists.slice(0, 5).map((artist, i) => (
-                      <button
-                        key={i}
-                        onClick={() => loadArtist(artist)}
-                        className="w-full px-4 py-3 text-left hover:bg-emerald-500/10 transition-colors flex items-center justify-between border-b border-zinc-800 last:border-0"
+                <div className="px-4 py-2 text-xs font-semibold text-zinc-400 bg-zinc-800/50 flex items-center gap-2">
+                  <Music className="h-3 w-3" /> Results
+                </div>
+                {suggestions.map((song, i) => {
+                  const isTab = song.tab_type?.toLowerCase().includes('tab') && song.tab_type !== 'Chords'
+                  return (
+                    <button
+                      key={`${song.tab_id}-${i}`}
+                      onClick={() => loadSong(song)}
+                      className="w-full px-4 py-3 text-left hover:bg-emerald-500/10 transition-colors border-b border-zinc-800 last:border-0 flex items-center justify-between"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-white truncate">{song.song}</div>
+                        <div className="text-xs text-zinc-400 truncate">by {song.artist}</div>
+                      </div>
+                      <Badge 
+                        variant="outline" 
+                        className={isTab 
+                          ? "border-amber-500/50 text-amber-400 ml-2 flex-shrink-0" 
+                          : "border-emerald-500/50 text-emerald-400 ml-2 flex-shrink-0"
+                        }
                       >
-                        <span className="font-medium text-white">{artist}</span>
-                        <span className="text-xs text-emerald-400">View all songs →</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-                
-                {suggestions.songs.length > 0 && (
-                  <>
-                    <div className="px-4 py-2 text-xs font-semibold text-zinc-400 bg-zinc-800/50 flex items-center gap-2">
-                      <Music className="h-3 w-3" /> Songs
-                    </div>
-                    {suggestions.songs.slice(0, 5).map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => doSearch(s.song)}
-                        className="w-full px-4 py-3 text-left hover:bg-purple-500/10 transition-colors border-b border-zinc-800 last:border-0"
-                      >
-                        <div className="font-medium text-white">{s.song}</div>
-                        <div className="text-xs text-zinc-400">by {s.artist}</div>
-                      </button>
-                    ))}
-                  </>
-                )}
+                        {isTab ? <><FileText className="h-3 w-3 mr-1" />Tab</> : <><Music className="h-3 w-3 mr-1" />Chords</>}
+                      </Badge>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -228,21 +219,6 @@ export default function HomePage() {
         {/* Navigation Tabs */}
         {view !== 'song' && (
           <div className="flex justify-center gap-2 mb-6 flex-wrap">
-            {/* Filter Buttons */}
-            <div className="flex gap-1 mr-4 border-r border-zinc-700 pr-4">
-              {(['all', 'chords', 'tabs'] as const).map(f => (
-                <Button
-                  key={f}
-                  variant={filter === f ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setFilter(f)}
-                  className={filter === f ? 'bg-emerald-500/20 text-emerald-400' : 'text-zinc-400'}
-                >
-                  {f === 'all' ? 'All' : f === 'chords' ? <><Music className="h-3 w-3 mr-1" />Chords</> : <><FileText className="h-3 w-3 mr-1" />Tabs</>}
-                </Button>
-              ))}
-            </div>
-            
             {[
               { key: 'home', icon: Home, label: 'Home', action: goHome },
               { key: 'top100', icon: Flame, label: 'Top 100', action: loadTop100 },
