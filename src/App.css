@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Prevent horizontal scroll on mobile */
+html, body, #root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Custom styles for tab content */
+.tab-content {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Chord diagram SVG */
+.chord-svg {
+  background: #1d232a;
+  border-radius: 8px;
+}
+
+/* Glowing chord highlight */
+.chord-highlight {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 5px rgba(0, 255, 136, 0.3); }
+  to { box-shadow: 0 0 15px rgba(0, 255, 136, 0.6); }
+}
