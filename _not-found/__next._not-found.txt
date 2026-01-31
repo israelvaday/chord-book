@@ -1,4 +1,4 @@
 1:"$Sreact.fragment"
 2:I[39756,["/chord-book/_next/static/chunks/2f236954d6a65e12.js"],"default"]
 3:I[37457,["/chord-book/_next/static/chunks/2f236954d6a65e12.js"],"default"]
-0:{"buildId":"TpwAQIWQ3c1D3xrST8has","rsc":["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}],"loading":null,"isPartial":false}
+0:{"buildId":"H7n424XKk7N0j6roFbPgM","rsc":["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}],"loading":null,"isPartial":false}
