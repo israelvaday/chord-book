@@ -87,95 +87,96 @@ function getChordExplanation(chordName: string): string {
 function PianoKeyboard({ chordPosition, isLarge }: { chordPosition: PianoChordPosition; isLarge: boolean }) {
   const notes = chordPosition.notes
   
-  // Find range for display (about 2 octaves centered on chord)
+  if (!notes || notes.length === 0) {
+    return <div className="text-zinc-500 text-sm">No piano data</div>
+  }
+  
+  // Find range for display (about 1.5 octaves centered on chord)
   const minNote = Math.min(...notes)
   const maxNote = Math.max(...notes)
   
-  // Start from a C below the lowest note
-  const startMidi = Math.floor((minNote - 2) / 12) * 12 + 48 // Around C4
-  const endMidi = startMidi + 24 // Two octaves
+  // Start from a C below the lowest note, show enough keys
+  const startMidi = Math.floor((minNote - 3) / 12) * 12 + 48
+  const endMidi = Math.max(startMidi + 17, maxNote + 3) // At least 1.5 octaves
   
-  const whiteKeys: number[] = []
-  const blackKeys: number[] = []
+  const whiteKeyWidth = isLarge ? 24 : 16
+  const whiteKeyHeight = isLarge ? 80 : 55
+  const blackKeyWidth = isLarge ? 14 : 10
+  const blackKeyHeight = isLarge ? 50 : 35
+  
+  // Build list of all keys in range
+  const allKeys: { midi: number; isBlack: boolean; whiteIndex: number }[] = []
+  let whiteIndex = 0
   
   for (let midi = startMidi; midi <= endMidi; midi++) {
-    if (isBlackKey(midi)) {
-      blackKeys.push(midi)
+    const black = isBlackKey(midi)
+    if (!black) {
+      allKeys.push({ midi, isBlack: false, whiteIndex })
+      whiteIndex++
     } else {
-      whiteKeys.push(midi)
+      allKeys.push({ midi, isBlack: true, whiteIndex: whiteIndex - 1 })
     }
   }
   
-  const whiteKeyWidth = isLarge ? 20 : 14
-  const whiteKeyHeight = isLarge ? 65 : 45
-  const blackKeyWidth = isLarge ? 12 : 9
-  const blackKeyHeight = isLarge ? 42 : 28
-  
+  const whiteKeys = allKeys.filter(k => !k.isBlack)
+  const blackKeys = allKeys.filter(k => k.isBlack)
   const totalWidth = whiteKeys.length * whiteKeyWidth
-  
-  const getBlackKeyX = (midi: number): number | null => {
-    const whiteKeyBefore = midi - 1
-    if (!isBlackKey(whiteKeyBefore)) {
-      const whiteIdx = whiteKeys.indexOf(whiteKeyBefore)
-      if (whiteIdx >= 0) {
-        return whiteIdx * whiteKeyWidth + whiteKeyWidth - blackKeyWidth / 2
-      }
-    }
-    return null
-  }
   
   const isPressed = (midi: number): boolean => notes.includes(midi)
   
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: totalWidth, height: whiteKeyHeight + 5 }}>
         {/* White keys */}
-        {whiteKeys.map((midi, idx) => (
-          <div
-            key={`white-${midi}`}
-            className={`absolute border border-gray-400 rounded-b-sm transition-colors ${
-              isPressed(midi)
-                ? 'bg-emerald-500 border-emerald-600'
-                : 'bg-white'
-            }`}
-            style={{
-              left: idx * whiteKeyWidth,
-              top: 0,
-              width: whiteKeyWidth - 1,
-              height: whiteKeyHeight,
-            }}
-          >
-            {isPressed(midi) && (
-              <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 font-bold text-white ${isLarge ? 'text-[9px]' : 'text-[7px]'}`}>
-                {midiToNoteName(midi).replace(/\d/, '')}
-              </span>
-            )}
-          </div>
-        ))}
+        {whiteKeys.map((key, idx) => {
+          const pressed = isPressed(key.midi)
+          return (
+            <div
+              key={`white-${key.midi}`}
+              className={`absolute border-2 rounded-b-md transition-all duration-150 ${
+                pressed
+                  ? 'bg-emerald-400 border-emerald-500 shadow-lg shadow-emerald-500/50'
+                  : 'bg-white border-gray-300 hover:bg-gray-100'
+              }`}
+              style={{
+                left: idx * whiteKeyWidth,
+                top: 0,
+                width: whiteKeyWidth - 2,
+                height: whiteKeyHeight,
+              }}
+            >
+              {pressed && (
+                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 font-bold ${isLarge ? 'text-sm' : 'text-xs'} text-emerald-900`}>
+                  {midiToNoteName(key.midi).replace(/\d/, '')}
+                </span>
+              )}
+            </div>
+          )
+        })}
         
         {/* Black keys */}
-        {blackKeys.map((midi) => {
-          const x = getBlackKeyX(midi)
-          if (x === null) return null
+        {blackKeys.map((key) => {
+          const pressed = isPressed(key.midi)
+          const xPos = (key.whiteIndex + 1) * whiteKeyWidth - blackKeyWidth / 2 - 1
           
           return (
             <div
-              key={`black-${midi}`}
-              className={`absolute rounded-b-sm z-10 ${
-                isPressed(midi)
-                  ? 'bg-emerald-600'
-                  : 'bg-gray-800'
+              key={`black-${key.midi}`}
+              className={`absolute rounded-b-md z-10 transition-all duration-150 ${
+                pressed
+                  ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50'
+                  : 'bg-gray-900 hover:bg-gray-800'
               }`}
               style={{
-                left: x,
+                left: xPos,
                 top: 0,
                 width: blackKeyWidth,
                 height: blackKeyHeight,
               }}
             >
-              {isPressed(midi) && (
-                <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 font-bold text-white ${isLarge ? 'text-[7px]' : 'text-[5px]'}`}>
-                  {midiToNoteName(midi).replace(/\d/, '')}
+              {pressed && (
+                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 font-bold text-white ${isLarge ? 'text-[10px]' : 'text-[8px]'}`}>
+                  {midiToNoteName(key.midi).replace(/\d/, '')}
                 </span>
               )}
             </div>
@@ -183,10 +184,14 @@ function PianoKeyboard({ chordPosition, isLarge }: { chordPosition: PianoChordPo
         })}
       </div>
       
-      {/* Note names display */}
+      {/* Notes display - cleaner look */}
       {isLarge && (
-        <div className="text-xs text-zinc-400 mt-1">
-          {notes.map(n => midiToNoteName(n)).join(' - ')}
+        <div className="flex gap-1 mt-1">
+          {notes.map((n, i) => (
+            <span key={i} className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs font-medium">
+              {midiToNoteName(n)}
+            </span>
+          ))}
         </div>
       )}
     </div>
@@ -407,36 +412,36 @@ export function ChordDiagram({ chord, size = 'normal', positionIndex = 0, onPosi
       
       {/* Beginner explanation - only show in large view */}
       {isLarge && (
-        <div className="mt-3 pt-3 border-t border-zinc-700">
-          <div className="text-xs text-zinc-400 text-center italic">
+        <div className="mt-3 pt-3 border-t border-zinc-700/50">
+          <p className="text-xs text-zinc-400 text-center italic mb-2">
             {getChordExplanation(chord)}
-          </div>
+          </p>
           
-          {/* Legend for guitar diagram */}
-          {effectiveInstrument === 'guitar' && (
-            <div className="mt-2 flex flex-wrap justify-center gap-3 text-[10px] text-zinc-500">
+          {/* Legend for guitar diagram - compact */}
+          {effectiveInstrument === 'guitar' && guitarPosition && (
+            <div className="flex justify-center gap-4 text-[10px] text-zinc-500">
               <span className="flex items-center gap-1">
-                <span className="text-red-400 font-bold">✕</span> Don&apos;t play
+                <span className="text-red-400">✕</span> Mute
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full border border-emerald-400 inline-block"></span> Open string
+                <span className="w-2 h-2 rounded-full border border-emerald-400"></span> Open
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Press here
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Press
               </span>
-              {guitarPosition && guitarPosition.baseFret > 1 && (
+              {guitarPosition.baseFret > 1 && (
                 <span className="flex items-center gap-1">
-                  <span className="bg-emerald-500 text-white px-1 rounded text-[8px]">{guitarPosition.baseFret}</span> Start at fret {guitarPosition.baseFret}
+                  <span className="bg-emerald-500 text-white px-1 rounded text-[8px]">{guitarPosition.baseFret}</span> Fret
                 </span>
               )}
             </div>
           )}
           
-          {/* Legend for piano */}
+          {/* Legend for piano - compact */}
           {effectiveInstrument === 'piano' && (
-            <div className="mt-2 flex justify-center gap-3 text-[10px] text-zinc-500">
+            <div className="flex justify-center text-[10px] text-zinc-500">
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-sm bg-emerald-500 inline-block"></span> Press these keys
+                <span className="w-3 h-2 rounded-sm bg-emerald-400"></span> Press these keys
               </span>
             </div>
           )}
