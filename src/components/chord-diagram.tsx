@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ChordPosition, getChordPositions } from '@/lib/chord-library'
 import { getPianoChordPositions, midiToNoteName, isBlackKey, type PianoChordPosition } from '@/lib/piano-chord-library'
-import { ChevronLeft, ChevronRight, Guitar, Piano } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Guitar, Piano, HelpCircle } from 'lucide-react'
 
 type Instrument = 'guitar' | 'piano'
 
@@ -13,6 +13,74 @@ interface Props {
   positionIndex?: number
   onPositionChange?: (index: number) => void
   showNavigation?: boolean
+}
+
+// Chord type explanations for beginners
+const chordExplanations: Record<string, string> = {
+  // Basic types
+  'm': 'Minor chord - Sad, melancholic sound',
+  'maj': 'Major chord - Happy, bright sound',
+  '7': 'Dominant 7th - Bluesy, tension sound',
+  'maj7': 'Major 7th - Jazzy, dreamy sound',
+  'm7': 'Minor 7th - Smooth, mellow jazz sound',
+  'dim': 'Diminished - Tense, unstable, spooky sound',
+  'dim7': 'Diminished 7th - Very tense, dramatic sound',
+  'aug': 'Augmented - Dreamy, suspended, unresolved',
+  'aug7': 'Augmented 7th - Jazzy with tension',
+  'sus2': 'Suspended 2nd - Open, airy sound (no 3rd)',
+  'sus4': 'Suspended 4th - Wanting to resolve (no 3rd)',
+  'sus': 'Suspended - Open sound, wants to resolve',
+  'add9': 'Add 9th - Richer major with extra color',
+  'add11': 'Add 11th - Spacious, open sound',
+  '9': '9th chord - Full, rich dominant sound',
+  'maj9': 'Major 9th - Lush, sophisticated jazz',
+  'm9': 'Minor 9th - Smooth, soulful minor',
+  '11': '11th chord - Very full, stacked sound',
+  'm11': 'Minor 11th - Dark, complex minor',
+  '13': '13th chord - Maximum richness, full jazz',
+  '6': '6th chord - Sweet, vintage sound',
+  'm6': 'Minor 6th - Minor with sweet color',
+  '7sus4': '7sus4 - Dominant with suspension',
+  '7#9': '7#9 - The "Hendrix chord" - Purple Haze!',
+  '7b9': '7b9 - Tension chord, wants to resolve',
+  'm7b5': 'Half-diminished - Sad, unstable, jazzy',
+  '5': 'Power chord - No 3rd, heavy rock sound',
+  '/': 'Slash chord - Different bass note under chord',
+}
+
+function getChordExplanation(chordName: string): string {
+  // Check for slash chord first
+  if (chordName.includes('/')) {
+    return chordExplanations['/']
+  }
+  
+  // Extract the chord type from name (e.g., "Am7" -> "m7", "Cmaj9" -> "maj9")
+  const root = chordName.match(/^[A-G][#b]?/)?.[0] || ''
+  const type = chordName.slice(root.length)
+  
+  // Try exact match first
+  if (chordExplanations[type]) {
+    return chordExplanations[type]
+  }
+  
+  // Try partial matches for complex chords
+  for (const [key, explanation] of Object.entries(chordExplanations)) {
+    if (type.includes(key) && key.length > 1) {
+      return explanation
+    }
+  }
+  
+  // Check for minor
+  if (type.startsWith('m') && !type.startsWith('maj')) {
+    return chordExplanations['m']
+  }
+  
+  // Default for major chords (no suffix)
+  if (!type || type === '') {
+    return 'Major chord - Happy, bright sound'
+  }
+  
+  return 'A chord variation'
 }
 
 // Piano keyboard component
@@ -188,9 +256,10 @@ export function ChordDiagram({ chord, size = 'normal', positionIndex = 0, onPosi
   const hasMultiplePositions = effectiveInstrument === 'guitar' ? guitarHasMultiple : pianoHasMultiple
   const positionsCount = effectiveInstrument === 'guitar' ? guitarPositions.length : pianoPositions.length
 
-  const width = isLarge ? 180 : 90
+  // Expanded viewBox to make room for fret number on left
+  const width = isLarge ? 200 : 100
   const height = isLarge ? 220 : 110
-  const viewBox = "0 0 100 120"
+  const viewBox = "-15 0 115 120"  // Extra space on left for fret number
 
   return (
     <div className={`bg-gradient-to-br from-zinc-800 to-zinc-900 p-4 rounded-xl shadow-lg border border-emerald-500/30 hover:border-emerald-400/60 transition-all ${isLarge ? 'min-w-[260px]' : 'min-w-[130px]'}`}>
@@ -277,9 +346,11 @@ export function ChordDiagram({ chord, size = 'normal', positionIndex = 0, onPosi
               <rect x="15" y="20" width="70" height="5" fill="#e4e4e7" rx="2" />
             ) : (
               <>
-                {/* Fret number background box */}
-                <rect x="0" y="22" width="14" height="20" fill="#10b981" rx="3" />
-                <text x="7" y="36" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">{guitarPosition.baseFret}</text>
+                {/* Fret number - positioned clearly to the left */}
+                <rect x="-12" y="28" width="18" height="18" fill="#10b981" rx="4" />
+                <text x="-3" y="42" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">{guitarPosition.baseFret}</text>
+                {/* Small "fr" label */}
+                <text x="-3" y="52" fill="#10b981" fontSize="6" textAnchor="middle">fr</text>
               </>
             )}
             
@@ -331,6 +402,44 @@ export function ChordDiagram({ chord, size = 'normal', positionIndex = 0, onPosi
       {effectiveInstrument === 'piano' && pianoPosition && (
         <div className="flex justify-center py-2">
           <PianoKeyboard chordPosition={pianoPosition} isLarge={isLarge} />
+        </div>
+      )}
+      
+      {/* Beginner explanation - only show in large view */}
+      {isLarge && (
+        <div className="mt-3 pt-3 border-t border-zinc-700">
+          <div className="text-xs text-zinc-400 text-center italic">
+            {getChordExplanation(chord)}
+          </div>
+          
+          {/* Legend for guitar diagram */}
+          {effectiveInstrument === 'guitar' && (
+            <div className="mt-2 flex flex-wrap justify-center gap-3 text-[10px] text-zinc-500">
+              <span className="flex items-center gap-1">
+                <span className="text-red-400 font-bold">✕</span> Don&apos;t play
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full border border-emerald-400 inline-block"></span> Open string
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Press here
+              </span>
+              {guitarPosition && guitarPosition.baseFret > 1 && (
+                <span className="flex items-center gap-1">
+                  <span className="bg-emerald-500 text-white px-1 rounded text-[8px]">{guitarPosition.baseFret}</span> Start at fret {guitarPosition.baseFret}
+                </span>
+              )}
+            </div>
+          )}
+          
+          {/* Legend for piano */}
+          {effectiveInstrument === 'piano' && (
+            <div className="mt-2 flex justify-center gap-3 text-[10px] text-zinc-500">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-sm bg-emerald-500 inline-block"></span> Press these keys
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
