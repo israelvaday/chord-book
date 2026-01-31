@@ -83,7 +83,7 @@ function getChordExplanation(chordName: string): string {
   return 'A chord variation'
 }
 
-// Piano keyboard component
+// Piano keyboard component - proper key layout
 function PianoKeyboard({ chordPosition, isLarge }: { chordPosition: PianoChordPosition; isLarge: boolean }) {
   const notes = chordPosition.notes
   
@@ -91,81 +91,127 @@ function PianoKeyboard({ chordPosition, isLarge }: { chordPosition: PianoChordPo
     return <div className="text-zinc-500 text-sm">No piano data</div>
   }
   
-  // Find range for display (about 1.5 octaves centered on chord)
+  // Piano key pattern: C=0, C#=1, D=2, D#=3, E=4, F=5, F#=6, G=7, G#=8, A=9, A#=10, B=11
+  // White keys: C(0), D(2), E(4), F(5), G(7), A(9), B(11)
+  // Black keys: C#(1), D#(3), F#(6), G#(8), A#(10)
+  
+  const whiteKeyNotes = [0, 2, 4, 5, 7, 9, 11] // C, D, E, F, G, A, B
+  const blackKeyNotes = [1, 3, 6, 8, 10] // C#, D#, F#, G#, A#
+  
+  // Find range - start from C below lowest note
   const minNote = Math.min(...notes)
   const maxNote = Math.max(...notes)
+  const startOctave = Math.floor(minNote / 12)
+  const endOctave = Math.floor(maxNote / 12) + 1
   
-  // Start from a C below the lowest note, show enough keys
-  const startMidi = Math.floor((minNote - 3) / 12) * 12 + 48
-  const endMidi = Math.max(startMidi + 17, maxNote + 3) // At least 1.5 octaves
+  // Start from C of start octave
+  const startMidi = startOctave * 12
+  const endMidi = (endOctave * 12) + 11
   
-  const whiteKeyWidth = isLarge ? 24 : 16
-  const whiteKeyHeight = isLarge ? 80 : 55
-  const blackKeyWidth = isLarge ? 14 : 10
-  const blackKeyHeight = isLarge ? 50 : 35
+  const whiteKeyWidth = isLarge ? 28 : 18
+  const whiteKeyHeight = isLarge ? 100 : 65
+  const blackKeyWidth = isLarge ? 18 : 12
+  const blackKeyHeight = isLarge ? 60 : 40
   
-  // Build list of all keys in range
-  const allKeys: { midi: number; isBlack: boolean; whiteIndex: number }[] = []
-  let whiteIndex = 0
-  
+  // Build white keys array
+  const whiteKeys: number[] = []
   for (let midi = startMidi; midi <= endMidi; midi++) {
-    const black = isBlackKey(midi)
-    if (!black) {
-      allKeys.push({ midi, isBlack: false, whiteIndex })
-      whiteIndex++
-    } else {
-      allKeys.push({ midi, isBlack: true, whiteIndex: whiteIndex - 1 })
+    if (whiteKeyNotes.includes(midi % 12)) {
+      whiteKeys.push(midi)
     }
   }
   
-  const whiteKeys = allKeys.filter(k => !k.isBlack)
-  const blackKeys = allKeys.filter(k => k.isBlack)
   const totalWidth = whiteKeys.length * whiteKeyWidth
   
+  // Check if key should be pressed
   const isPressed = (midi: number): boolean => notes.includes(midi)
+  
+  // Get black key position relative to white keys
+  // Black keys sit between white keys:
+  // C#/Db between C and D
+  // D#/Eb between D and E  
+  // F#/Gb between F and G
+  // G#/Ab between G and A
+  // A#/Bb between A and B
+  const getBlackKeyPosition = (midi: number): number | null => {
+    const noteInOctave = midi % 12
+    if (!blackKeyNotes.includes(noteInOctave)) return null
+    
+    // Find the white key before this black key
+    const whiteKeyBefore = noteInOctave === 1 ? midi - 1 : // C# -> C
+                          noteInOctave === 3 ? midi - 1 : // D# -> D
+                          noteInOctave === 6 ? midi - 1 : // F# -> F
+                          noteInOctave === 8 ? midi - 1 : // G# -> G
+                          noteInOctave === 10 ? midi - 1 : // A# -> A
+                          null
+    
+    if (whiteKeyBefore === null) return null
+    
+    const whiteKeyIndex = whiteKeys.indexOf(whiteKeyBefore)
+    if (whiteKeyIndex === -1) return null
+    
+    // Position black key at the edge between two white keys
+    return (whiteKeyIndex + 1) * whiteKeyWidth - blackKeyWidth / 2
+  }
+  
+  // Get all black keys in range
+  const blackKeysList: number[] = []
+  for (let midi = startMidi; midi <= endMidi; midi++) {
+    if (blackKeyNotes.includes(midi % 12)) {
+      blackKeysList.push(midi)
+    }
+  }
+  
+  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+  const getNoteName = (midi: number): string => noteNames[midi % 12]
   
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="relative" style={{ width: totalWidth, height: whiteKeyHeight + 5 }}>
+      <div className="relative border-2 border-zinc-600 rounded-b-lg overflow-hidden" style={{ width: totalWidth, height: whiteKeyHeight }}>
         {/* White keys */}
-        {whiteKeys.map((key, idx) => {
-          const pressed = isPressed(key.midi)
+        {whiteKeys.map((midi, idx) => {
+          const pressed = isPressed(midi)
           return (
             <div
-              key={`white-${key.midi}`}
-              className={`absolute border-2 rounded-b-md transition-all duration-150 ${
+              key={`white-${midi}`}
+              className={`absolute border-r border-gray-300 transition-all ${
                 pressed
-                  ? 'bg-emerald-400 border-emerald-500 shadow-lg shadow-emerald-500/50'
-                  : 'bg-white border-gray-300 hover:bg-gray-100'
+                  ? 'bg-emerald-400'
+                  : 'bg-white'
               }`}
               style={{
                 left: idx * whiteKeyWidth,
                 top: 0,
-                width: whiteKeyWidth - 2,
+                width: whiteKeyWidth,
                 height: whiteKeyHeight,
               }}
             >
               {pressed && (
-                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 font-bold ${isLarge ? 'text-sm' : 'text-xs'} text-emerald-900`}>
-                  {midiToNoteName(key.midi).replace(/\d/, '')}
-                </span>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                  <div className={`w-4 h-4 rounded-full bg-emerald-600 flex items-center justify-center ${isLarge ? 'w-6 h-6' : ''}`}>
+                    <span className={`font-bold text-white ${isLarge ? 'text-xs' : 'text-[8px]'}`}>
+                      {getNoteName(midi)}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
           )
         })}
         
         {/* Black keys */}
-        {blackKeys.map((key) => {
-          const pressed = isPressed(key.midi)
-          const xPos = (key.whiteIndex + 1) * whiteKeyWidth - blackKeyWidth / 2 - 1
+        {blackKeysList.map((midi) => {
+          const xPos = getBlackKeyPosition(midi)
+          if (xPos === null) return null
           
+          const pressed = isPressed(midi)
           return (
             <div
-              key={`black-${key.midi}`}
-              className={`absolute rounded-b-md z-10 transition-all duration-150 ${
+              key={`black-${midi}`}
+              className={`absolute rounded-b-md z-10 transition-all ${
                 pressed
-                  ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50'
-                  : 'bg-gray-900 hover:bg-gray-800'
+                  ? 'bg-emerald-500'
+                  : 'bg-zinc-900'
               }`}
               style={{
                 left: xPos,
@@ -175,25 +221,30 @@ function PianoKeyboard({ chordPosition, isLarge }: { chordPosition: PianoChordPo
               }}
             >
               {pressed && (
-                <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 font-bold text-white ${isLarge ? 'text-[10px]' : 'text-[8px]'}`}>
-                  {midiToNoteName(key.midi).replace(/\d/, '')}
-                </span>
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2">
+                  <div className={`w-4 h-4 rounded-full bg-emerald-300 flex items-center justify-center ${isLarge ? 'w-5 h-5' : 'w-3 h-3'}`}>
+                    <span className={`font-bold text-emerald-900 ${isLarge ? 'text-[8px]' : 'text-[6px]'}`}>
+                      {getNoteName(midi).replace('#', '')}
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
           )
         })}
       </div>
       
-      {/* Notes display - cleaner look */}
-      {isLarge && (
-        <div className="flex gap-1 mt-1">
+      {/* Finger position guide */}
+      <div className="text-center">
+        <div className="text-[10px] text-zinc-500 mb-1">Press these keys:</div>
+        <div className="flex gap-1 justify-center flex-wrap">
           {notes.map((n, i) => (
-            <span key={i} className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs font-medium">
-              {midiToNoteName(n)}
+            <span key={i} className="bg-emerald-500 text-white px-2 py-0.5 rounded text-xs font-bold">
+              {getNoteName(n)}{Math.floor(n / 12) - 1}
             </span>
           ))}
         </div>
-      )}
+      </div>
     </div>
   )
 }
