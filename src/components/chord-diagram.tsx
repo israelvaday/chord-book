@@ -1,21 +1,19 @@
 'use client'
 
-import { ChordDiagram as ChordDiagramType } from '@/lib/api'
 import { ChordPosition, getChordPositions } from '@/lib/chord-library'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Props {
   chord: string
-  diagram?: ChordDiagramType
   size?: 'normal' | 'large'
   positionIndex?: number
   onPositionChange?: (index: number) => void
   showNavigation?: boolean
 }
 
-export function ChordDiagram({ chord, diagram, size = 'normal', positionIndex = 0, onPositionChange, showNavigation = false }: Props) {
-  // Get all positions for this chord from library, falling back to API diagram
-  const positions = getChordPositions(chord, diagram)
+export function ChordDiagram({ chord, size = 'normal', positionIndex = 0, onPositionChange, showNavigation = false }: Props) {
+  // Get all positions for this chord from library
+  const positions = getChordPositions(chord)
   
   // If no positions available, show empty state
   if (positions.length === 0) {

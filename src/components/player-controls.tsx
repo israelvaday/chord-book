@@ -16,7 +16,7 @@ export function PlayerControls() {
   } = useStore()
 
   return (
-    <div className="flex flex-wrap items-center gap-3 p-3 bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800">
+    <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 p-2 sm:p-3 bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800 overflow-hidden">
       {/* Font Size */}
       <div className="flex items-center gap-2">
         <span className="text-zinc-400 text-sm hidden sm:inline">Font</span>

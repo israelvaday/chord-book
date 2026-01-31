@@ -133,13 +133,14 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
 
   return (
     <div 
-      className={containsHebrew ? "" : "font-mono"}
+      className={`${containsHebrew ? "" : "font-mono"} break-words overflow-x-auto max-w-full`}
       style={{ 
         fontSize: `${fontSize}px`,
         direction: containsHebrew ? 'rtl' : 'ltr',
         textAlign: containsHebrew ? 'right' : 'left',
         fontFamily: containsHebrew ? 'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Hebrew", Arial, sans-serif' : undefined,
-        lineHeight: '1.8'
+        lineHeight: '1.8',
+        wordBreak: 'break-word'
       }}
     >
       {lines.map((line, lineIndex) => {

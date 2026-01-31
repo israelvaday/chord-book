@@ -128,14 +128,14 @@ export default function HomePage() {
   const hasSuggestions = suggestions.length > 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 dark overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 dark overflow-x-hidden overflow-y-auto">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <button onClick={goHome} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <Guitar className="h-8 w-8 text-emerald-400" />
-              <span className="font-bold text-xl bg-gradient-to-r from-emerald-400 to-purple-400 bg-clip-text text-transparent">
+            <button onClick={goHome} className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
+              <Guitar className="h-8 w-8 text-emerald-400 flex-shrink-0" />
+              <span className="font-bold text-xl bg-gradient-to-r from-emerald-400 to-purple-400 bg-clip-text text-transparent truncate max-w-[120px] sm:max-w-none">
                 Chord Book
               </span>
             </button>

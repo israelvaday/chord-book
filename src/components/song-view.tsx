@@ -73,9 +73,8 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
   }
 
   const handleChordClick = (chord: string) => {
-    // Check if chord has positions in our library or API
-    const apiDiagram = song.chord_diagrams?.[chord]
-    const positions = getChordPositions(chord, apiDiagram)
+    // Check if chord has positions in our library
+    const positions = getChordPositions(chord)
     
     if (positions.length > 0) {
       setActiveChord(chord)
@@ -92,13 +91,13 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
       <Card className="bg-gradient-to-br from-emerald-500/10 to-purple-500/10 border-emerald-500/20">
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">{song.song}</h1>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 break-words">{song.song}</h1>
               <button 
                 onClick={() => onArtistClick(song.artist)}
-                className="text-emerald-400 hover:text-emerald-300 text-lg transition-colors inline-flex items-center gap-1"
+                className="text-emerald-400 hover:text-emerald-300 text-base sm:text-lg transition-colors inline-flex items-center gap-1 break-words text-left"
               >
-                by {song.artist} <ChevronRight className="h-4 w-4" />
+                by {song.artist} <ChevronRight className="h-4 w-4 flex-shrink-0" />
               </button>
             </div>
             
@@ -167,7 +166,6 @@ export function SongView({ song, onArtistClick, onSongClick }: Props) {
             </button>
             <ChordDiagram 
               chord={activeChord} 
-              diagram={song.chord_diagrams?.[activeChord]} 
               size="large"
               positionIndex={chordPositions[activeChord] || 0}
               onPositionChange={(index) => handlePositionChange(activeChord, index)}
