@@ -41,8 +41,9 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
     let pendingChords: { chord: string, position: number }[] = []
     
     for (const line of rawLines) {
-      // Support both [ch]...[/ch] format AND [Chord] format for Hebrew songs
-      const chordRegex = /\[ch\](.*?)\[\/ch\]|\[([A-Ga-g][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13|M)*[0-9]*(?:\/[A-G][#b]?)?)\]/g
+      // Support [ch]...[/ch] format AND [multiple chords] format for Hebrew songs
+      // Hebrew format: [Am Dm G] or [Cmaj7 F#mb5 B4]
+      const chordRegex = /\[ch\](.*?)\[\/ch\]|\[([A-Ga-g#b0-9\s\/majmindimaugsusadd]+)\]/g
       let match
       let lastIndex = 0
       let textWithoutChords = ''
@@ -51,10 +52,20 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       while ((match = chordRegex.exec(line)) !== null) {
         const textBefore = line.slice(lastIndex, match.index)
         textWithoutChords += textBefore
-        // match[1] is from [ch]...[/ch], match[2] is from [Chord]
-        const chordName = match[1] || match[2]
-        const transposedChord = transposeChord(chordName, transpose)
-        chords.push({ chord: transposedChord, position: textWithoutChords.length })
+        // match[1] is from [ch]...[/ch], match[2] is from [Chord(s)]
+        const chordContent = match[1] || match[2]
+        
+        // Split by spaces for Hebrew format (multiple chords in one bracket)
+        const chordList = chordContent.trim().split(/\s+/)
+        
+        let pos = textWithoutChords.length
+        for (const chord of chordList) {
+          if (chord) {
+            const transposedChord = transposeChord(chord, transpose)
+            chords.push({ chord: transposedChord, position: pos })
+            pos += transposedChord.length + 1
+          }
+        }
         lastIndex = match.index + match[0].length
       }
       textWithoutChords += line.slice(lastIndex)
@@ -122,12 +133,13 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
 
   return (
     <div 
-      className="font-mono"
+      className={containsHebrew ? "" : "font-mono"}
       style={{ 
         fontSize: `${fontSize}px`,
         direction: containsHebrew ? 'rtl' : 'ltr',
         textAlign: containsHebrew ? 'right' : 'left',
-        fontFamily: containsHebrew ? '"David", "Noto Sans Hebrew", "Arial Hebrew", monospace' : undefined
+        fontFamily: containsHebrew ? 'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Hebrew", Arial, sans-serif' : undefined,
+        lineHeight: '1.8'
       }}
     >
       {lines.map((line, lineIndex) => {
