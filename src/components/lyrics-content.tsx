@@ -17,10 +17,10 @@ function isHebrew(text: string): boolean {
   return /[\u0590-\u05FF]/.test(text)
 }
 
-// Parse a line and return segments of text with optional chord above
-interface LineSegment {
+interface ParsedLine {
+  type: 'lyrics' | 'chords' | 'empty' | 'combined'
   text: string
-  chord?: string
+  chords?: { chord: string; position: number }[]
 }
 
 export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
@@ -29,142 +29,64 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   // Detect if content is Hebrew
   const containsHebrew = useMemo(() => isHebrew(content || ''), [content])
 
-  // Parse content into lines with inline chord segments
+  // Parse content - keep chord lines separate from lyric lines
   const lines = useMemo(() => {
     if (!content) return []
     
-    // Handle [tab]...[/tab] sections - remove tags but keep content
+    // Handle [tab]...[/tab] sections
     let parsed = content.replace(/\[tab\]([\s\S]*?)\[\/tab\]/g, '$1')
     
-    // Split into lines and clean up \r
     const rawLines = parsed.split('\n').map(l => l.replace(/\r/g, ''))
+    const result: ParsedLine[] = []
     
-    // Process lines - each line becomes array of segments with optional chord
-    const processedLines: { segments: LineSegment[], hasChords: boolean }[] = []
-    let pendingChords: string[] = []
-    
-    for (const line of rawLines) {
-      // Support [ch]...[/ch] format AND [multiple chords] format for Hebrew songs
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i]
+      
+      // Extract chords and their positions
       const chordRegex = /\[ch\](.*?)\[\/ch\]|\[([A-Ga-g#b0-9\s\/majmindimaugsusadd]+)\]/g
       let match
       let lastIndex = 0
-      const segments: LineSegment[] = []
-      let foundChords = false
+      let textWithoutChords = ''
+      const chords: { chord: string; position: number }[] = []
       
       while ((match = chordRegex.exec(line)) !== null) {
-        // Add text before the chord
         const textBefore = line.slice(lastIndex, match.index)
-        if (textBefore) {
-          segments.push({ text: textBefore })
-        }
+        const positionInText = textWithoutChords.length + textBefore.length
+        textWithoutChords += textBefore
         
-        // Get chord(s)
         const chordContent = match[1] || match[2]
         const chordList = chordContent.trim().split(/\s+/).filter(c => c)
         
-        for (let i = 0; i < chordList.length; i++) {
-          const transposedChord = transposeChord(chordList[i], transpose)
-          // Add chord as a segment with placeholder text (space or empty)
-          segments.push({ 
-            text: i < chordList.length - 1 ? ' ' : '', 
-            chord: transposedChord 
-          })
-          foundChords = true
+        let pos = positionInText
+        for (const chord of chordList) {
+          const transposedChord = transposeChord(chord, transpose)
+          chords.push({ chord: transposedChord, position: pos })
+          pos += transposedChord.length + 1
         }
         
         lastIndex = match.index + match[0].length
       }
+      textWithoutChords += line.slice(lastIndex)
       
-      // Add remaining text
-      const remainingText = line.slice(lastIndex)
-      if (remainingText) {
-        segments.push({ text: remainingText })
-      }
+      const hasChords = chords.length > 0
+      const hasText = textWithoutChords.trim() !== ''
       
-      // Check if this is chord-only line
-      const textContent = segments.map(s => s.text).join('').trim()
-      const isChordOnlyLine = foundChords && textContent === ''
-      
-      if (isChordOnlyLine) {
-        // Save chords for next line
-        pendingChords = segments.filter(s => s.chord).map(s => s.chord!)
-      } else if (pendingChords.length > 0 && textContent !== '') {
-        // Apply pending chords to this line
-        // Distribute chords evenly across the text
-        const textSegments = segments.filter(s => !s.chord)
-        const newSegments: LineSegment[] = []
-        
-        if (textSegments.length > 0 && pendingChords.length > 0) {
-          const fullText = textSegments.map(s => s.text).join('')
-          const chordSpacing = Math.floor(fullText.length / (pendingChords.length + 1))
-          
-          let charCount = 0
-          let chordIdx = 0
-          
-          for (const seg of textSegments) {
-            let text = seg.text
-            let segStart = 0
-            
-            while (chordIdx < pendingChords.length) {
-              const targetPos = chordSpacing * (chordIdx + 1)
-              const posInSeg = targetPos - charCount
-              
-              if (posInSeg > 0 && posInSeg < text.length) {
-                // Insert chord at this position
-                newSegments.push({ text: text.slice(segStart, posInSeg) })
-                newSegments.push({ text: '', chord: pendingChords[chordIdx] })
-                segStart = posInSeg
-                chordIdx++
-              } else if (posInSeg <= 0) {
-                // Chord should have been placed earlier
-                chordIdx++
-              } else {
-                break
-              }
-            }
-            
-            if (segStart < text.length) {
-              newSegments.push({ text: text.slice(segStart) })
-            }
-            charCount += text.length
-          }
-          
-          // Add any remaining chords at the end
-          while (chordIdx < pendingChords.length) {
-            newSegments.push({ text: ' ', chord: pendingChords[chordIdx] })
-            chordIdx++
-          }
-          
-          processedLines.push({ segments: newSegments, hasChords: true })
-        } else {
-          processedLines.push({ segments, hasChords: foundChords })
-        }
-        pendingChords = []
+      if (hasChords && hasText) {
+        // Line has both chords and text inline - combined format
+        result.push({ type: 'combined', text: textWithoutChords, chords })
+      } else if (hasChords && !hasText) {
+        // Chord-only line
+        result.push({ type: 'chords', text: '', chords })
+      } else if (hasText) {
+        // Text-only line
+        result.push({ type: 'lyrics', text: textWithoutChords })
       } else {
-        // Normal line
-        if (pendingChords.length > 0 && segments.length === 0) {
-          // Empty line with pending chords - just show chords
-          processedLines.push({ 
-            segments: pendingChords.map(c => ({ text: ' ', chord: c })), 
-            hasChords: true 
-          })
-          pendingChords = []
-        }
-        if (segments.length > 0) {
-          processedLines.push({ segments, hasChords: foundChords })
-        }
+        // Empty line
+        result.push({ type: 'empty', text: '' })
       }
     }
     
-    // Flush any remaining pending chords
-    if (pendingChords.length > 0) {
-      processedLines.push({ 
-        segments: pendingChords.map(c => ({ text: ' ', chord: c })), 
-        hasChords: true 
-      })
-    }
-    
-    return processedLines
+    return result
   }, [content, transpose])
 
   if (!content) {
@@ -174,51 +96,111 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   // Check if chord has a diagram available
   const hasChordDiagram = (chord: string): boolean => {
     if (chordDiagrams?.[chord]) return true
-    const positions = getChordPositions(chord)
-    return positions.length > 0
+    return getChordPositions(chord).length > 0
+  }
+
+  // Render a clickable chord
+  const renderChord = (chord: string, key: string | number) => {
+    const isClickable = onChordClick && hasChordDiagram(chord)
+    return (
+      <span
+        key={key}
+        className={`text-emerald-400 font-bold ${
+          isClickable
+            ? 'cursor-pointer hover:text-emerald-300 bg-emerald-500/20 px-0.5 rounded border border-emerald-500/40'
+            : ''
+        }`}
+        onClick={() => isClickable && onChordClick?.(chord)}
+        title={isClickable ? 'Click to see chord diagram' : undefined}
+      >
+        {chord}
+      </span>
+    )
+  }
+
+  // Build chord line with proper spacing using monospace
+  const buildChordLine = (chords: { chord: string; position: number }[], textLength: number) => {
+    if (!showChords || chords.length === 0) return null
+    
+    // Sort by position
+    const sorted = [...chords].sort((a, b) => a.position - b.position)
+    
+    // Build line with spaces
+    const elements: React.ReactNode[] = []
+    let currentPos = 0
+    
+    for (let i = 0; i < sorted.length; i++) {
+      const { chord, position } = sorted[i]
+      
+      // Add spaces before this chord
+      const spaces = Math.max(0, position - currentPos)
+      if (spaces > 0) {
+        elements.push(<span key={`space-${i}`}>{' '.repeat(spaces)}</span>)
+      }
+      
+      elements.push(renderChord(chord, `chord-${i}`))
+      currentPos = position + chord.length
+    }
+    
+    return (
+      <div className="text-emerald-400 font-bold leading-tight select-none whitespace-pre">
+        {elements}
+      </div>
+    )
   }
 
   return (
     <div 
-      className="break-words overflow-x-auto max-w-full"
+      className="break-words overflow-x-auto max-w-full font-mono"
       style={{ 
         fontSize: `${fontSize}px`,
         direction: containsHebrew ? 'rtl' : 'ltr',
         textAlign: containsHebrew ? 'right' : 'left',
         lineHeight: '1.4',
-        wordBreak: 'break-word'
+        fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
       }}
     >
-      {lines.map((line, lineIndex) => (
-        <div key={lineIndex} className="min-h-[1em] my-1">
-          <div className="flex flex-wrap items-end" style={{ direction: containsHebrew ? 'rtl' : 'ltr' }}>
-            {line.segments.map((seg, segIndex) => (
-              <span key={segIndex} className="inline-flex flex-col items-start">
-                {/* Chord above */}
-                {showChords && seg.chord && (
-                  <span
-                    className={`text-emerald-400 font-bold text-sm leading-tight mb-0.5 ${
-                      onChordClick && hasChordDiagram(seg.chord)
-                        ? 'cursor-pointer hover:text-emerald-300 bg-emerald-500/20 px-1 rounded border border-emerald-500/40'
-                        : ''
-                    }`}
-                    onClick={() => onChordClick && hasChordDiagram(seg.chord!) && onChordClick(seg.chord!)}
-                    title={hasChordDiagram(seg.chord) ? 'Click to see chord diagram' : undefined}
-                  >
-                    {seg.chord}
-                  </span>
-                )}
-                {/* Add empty space for alignment when showing chords but segment has none */}
-                {showChords && line.hasChords && !seg.chord && (
-                  <span className="text-sm leading-tight mb-0.5">&nbsp;</span>
-                )}
-                {/* Text below */}
-                <span className="text-zinc-100 whitespace-pre">{seg.text || '\u00A0'}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
+      {lines.map((line, lineIndex) => {
+        // Check if next line is lyrics (for chord-only lines)
+        const nextLine = lines[lineIndex + 1]
+        const isChordLineAboveLyrics = line.type === 'chords' && nextLine?.type === 'lyrics'
+        
+        if (line.type === 'empty') {
+          return <div key={lineIndex} className="h-4" />
+        }
+        
+        if (line.type === 'chords') {
+          // Chord-only line - render with spacing
+          return (
+            <div key={lineIndex} className={isChordLineAboveLyrics ? 'mb-0' : 'mb-2'}>
+              {buildChordLine(line.chords!, Math.max(...(line.chords?.map(c => c.position + c.chord.length) || [0])))}
+            </div>
+          )
+        }
+        
+        if (line.type === 'lyrics') {
+          // Lyrics-only line
+          return (
+            <div key={lineIndex} className="text-zinc-100 whitespace-pre-wrap mb-2">
+              {line.text || '\u00A0'}
+            </div>
+          )
+        }
+        
+        if (line.type === 'combined') {
+          // Line with inline chords - show chord line above, then lyrics
+          return (
+            <div key={lineIndex} className="mb-2">
+              {buildChordLine(line.chords!, line.text.length)}
+              <div className="text-zinc-100 whitespace-pre-wrap">
+                {line.text || '\u00A0'}
+              </div>
+            </div>
+          )
+        }
+        
+        return null
+      })}
     </div>
   )
 }
