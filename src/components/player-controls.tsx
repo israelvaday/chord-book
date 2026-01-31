@@ -12,6 +12,7 @@ export function PlayerControls() {
     fontSize, setFontSize, 
     showChords, setShowChords,
     autoScroll, setAutoScroll,
+    scrollSpeed, setScrollSpeed,
     transpose, setTranspose
   } = useStore()
 
@@ -80,7 +81,7 @@ export function PlayerControls() {
           </span>
         </label>
 
-        <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex items-center gap-2">
           <Switch 
             checked={autoScroll} 
             onCheckedChange={setAutoScroll}
@@ -89,7 +90,28 @@ export function PlayerControls() {
             <Scroll className="h-4 w-4 inline mr-1" />
             <span className="hidden sm:inline">Scroll</span>
           </span>
-        </label>
+          {autoScroll && (
+            <div className="flex items-center gap-1 ml-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6"
+                onClick={() => setScrollSpeed(scrollSpeed - 10)}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <span className="text-xs text-zinc-400 w-6 text-center">{scrollSpeed}</span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6"
+                onClick={() => setScrollSpeed(scrollSpeed + 10)}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

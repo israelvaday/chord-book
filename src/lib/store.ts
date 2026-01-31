@@ -19,6 +19,8 @@ interface AppState {
   setShowChords: (show: boolean) => void
   autoScroll: boolean
   setAutoScroll: (scroll: boolean) => void
+  scrollSpeed: number
+  setScrollSpeed: (speed: number) => void
   transpose: number
   setTranspose: (t: number) => void
   
@@ -54,6 +56,8 @@ export const useStore = create<AppState>()(
       setShowChords: (show) => set({ showChords: show }),
       autoScroll: false,
       setAutoScroll: (scroll) => set({ autoScroll: scroll }),
+      scrollSpeed: 30, // pixels per second (10-100 range)
+      setScrollSpeed: (speed) => set({ scrollSpeed: Math.max(10, Math.min(100, speed)) }),
       transpose: 0,
       setTranspose: (t) => set({ transpose: ((t % 12) + 12) % 12 }),
       
@@ -71,6 +75,7 @@ export const useStore = create<AppState>()(
         favorites: state.favorites,
         fontSize: state.fontSize,
         showChords: state.showChords,
+        scrollSpeed: state.scrollSpeed,
       }),
     }
   )

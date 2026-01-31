@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Song, search, getArtistSongs } from '@/lib/api'
 import { useStore } from '@/lib/store'
 import { LyricsContent } from './lyrics-content'
@@ -21,13 +21,36 @@ interface Props {
 }
 
 export function SongView({ song, onArtistClick, onSongClick }: Props) {
-  const { favorites, toggleFavorite, isFavorite } = useStore()
+  const { favorites, toggleFavorite, isFavorite, autoScroll, scrollSpeed } = useStore()
   const [suggestedSongs, setSuggestedSongs] = useState<Song[]>([])
   const [activeChord, setActiveChord] = useState<string | null>(null)
   // Track position index for each chord separately
   const [chordPositions, setChordPositions] = useState<Record<string, number>>({})
+  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const favorite = isFavorite(song.tab_id)
+  
+  // Auto-scroll effect
+  useEffect(() => {
+    if (autoScroll) {
+      // scrollSpeed is pixels per second, we update every 50ms
+      const pixelsPerInterval = scrollSpeed / 20 // 1000ms / 50ms = 20 intervals per second
+      scrollIntervalRef.current = setInterval(() => {
+        window.scrollBy({ top: pixelsPerInterval, behavior: 'auto' })
+      }, 50)
+    } else {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+        scrollIntervalRef.current = null
+      }
+    }
+    
+    return () => {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+      }
+    }
+  }, [autoScroll, scrollSpeed])
   
   // Determine content type by:
   // 1. tab_type containing "Tabs" (e.g., "Tabs", "Bass Tabs") = actual tablature
