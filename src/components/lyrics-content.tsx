@@ -15,8 +15,16 @@ interface Props {
 // Minimum character spacing between chords to prevent overlap
 const MIN_CHORD_SPACING = 4
 
+// Detect if text contains Hebrew characters
+function isHebrew(text: string): boolean {
+  return /[\u0590-\u05FF]/.test(text)
+}
+
 export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   const { fontSize, showChords, transpose } = useStore()
+  
+  // Detect if content is Hebrew
+  const containsHebrew = useMemo(() => isHebrew(content || ''), [content])
 
   // Parse content into lines with chords positioned above
   const lines = useMemo(() => {
@@ -33,7 +41,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
     let pendingChords: { chord: string, position: number }[] = []
     
     for (const line of rawLines) {
-      const chordRegex = /\[ch\](.*?)\[\/ch\]/g
+      // Support both [ch]...[/ch] format AND [Chord] format for Hebrew songs
+      const chordRegex = /\[ch\](.*?)\[\/ch\]|\[([A-Ga-g][#b]?(?:m|maj|min|dim|aug|sus|add|7|9|11|13|M)*[0-9]*(?:\/[A-G][#b]?)?)\]/g
       let match
       let lastIndex = 0
       let textWithoutChords = ''
@@ -42,7 +51,9 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       while ((match = chordRegex.exec(line)) !== null) {
         const textBefore = line.slice(lastIndex, match.index)
         textWithoutChords += textBefore
-        const transposedChord = transposeChord(match[1], transpose)
+        // match[1] is from [ch]...[/ch], match[2] is from [Chord]
+        const chordName = match[1] || match[2]
+        const transposedChord = transposeChord(chordName, transpose)
         chords.push({ chord: transposedChord, position: textWithoutChords.length })
         lastIndex = match.index + match[0].length
       }
@@ -112,7 +123,12 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   return (
     <div 
       className="font-mono"
-      style={{ fontSize: `${fontSize}px` }}
+      style={{ 
+        fontSize: `${fontSize}px`,
+        direction: containsHebrew ? 'rtl' : 'ltr',
+        textAlign: containsHebrew ? 'right' : 'left',
+        fontFamily: containsHebrew ? '"David", "Noto Sans Hebrew", "Arial Hebrew", monospace' : undefined
+      }}
     >
       {lines.map((line, lineIndex) => {
         // Check if this line has chords
@@ -124,7 +140,7 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
           <div key={lineIndex} className="min-h-[1.5em]">
             {/* Chord line above */}
             {hasChords && (
-              <div className="text-emerald-400 font-bold h-8 relative select-none">
+              <div className="text-emerald-400 font-bold h-8 relative select-none" style={{ direction: 'ltr' }}>
                 {adjustedChords.map((c, i) => {
                   const isClickable = onChordClick && hasChordDiagram(c.chord)
                   return (
@@ -136,7 +152,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
                           : ''
                       }`}
                       style={{ 
-                        left: `${c.position}ch`,
+                        left: containsHebrew ? 'auto' : `${c.position}ch`,
+                        right: containsHebrew ? `${c.position}ch` : 'auto',
                       }}
                       onClick={() => isClickable && onChordClick?.(c.chord)}
                       title={isClickable ? 'Click to see chord diagram' : undefined}
