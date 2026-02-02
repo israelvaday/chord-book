@@ -175,7 +175,11 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   }
 
   // Build chord line with proper spacing using monospace
-  const buildChordLine = (chords: { chord: string; position: number }[], textLength: number) => {
+  const buildChordLine = (
+    chords: { chord: string; position: number }[],
+    textLength: number,
+    textOnly: boolean = false
+  ) => {
     if (!showChords || chords.length === 0) return null
     
     // Sort by position
@@ -184,20 +188,42 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
     // Build line with spaces
     const elements: React.ReactNode[] = []
     let currentPos = 0
-    
+
+    if (textOnly) {
+      let lineText = ''
+      for (let i = 0; i < sorted.length; i++) {
+        const { chord, position } = sorted[i]
+        const spaces = Math.max(0, position - currentPos)
+        if (spaces > 0) {
+          lineText += ' '.repeat(spaces)
+        }
+        lineText += chord
+        currentPos = position + chord.length
+      }
+
+      return (
+        <div
+          className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
+          style={{ direction: 'ltr', textAlign: 'right', unicodeBidi: 'isolate' }}
+        >
+          {lineText}
+        </div>
+      )
+    }
+
     for (let i = 0; i < sorted.length; i++) {
       const { chord, position } = sorted[i]
-      
+
       // Add spaces before this chord
       const spaces = Math.max(0, position - currentPos)
       if (spaces > 0) {
         elements.push(' '.repeat(spaces))
       }
-      
+
       elements.push(renderChord(chord, `chord-${i}`, true))
       currentPos = position + chord.length
     }
-    
+
     return (
       <div
         className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
@@ -233,7 +259,11 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
           // Chord-only line - render with spacing
           return (
             <div key={lineIndex} className={isChordLineAboveLyrics ? 'mb-0' : 'mb-2'}>
-              {buildChordLine(line.chords!, Math.max(...(line.chords?.map(c => c.position + c.chord.length) || [0])))}
+              {buildChordLine(
+                line.chords!,
+                Math.max(...(line.chords?.map(c => c.position + c.chord.length) || [0])),
+                containsHebrew
+              )}
             </div>
           )
         }
@@ -251,7 +281,7 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
           // Line with inline chords - show chord line above, then lyrics
           return (
             <div key={lineIndex} className="mb-2">
-              {buildChordLine(line.chords!, line.text.length)}
+              {buildChordLine(line.chords!, line.text.length, containsHebrew)}
               <div className="text-zinc-100 whitespace-pre-wrap">
                 {line.text || '\u00A0'}
               </div>
