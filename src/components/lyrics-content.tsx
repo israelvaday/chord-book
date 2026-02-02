@@ -268,12 +268,12 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
         }
         
         if (line.type === 'lyrics') {
-          // Lyrics-only line - use same direction as chord lines for alignment
+          // Lyrics-only line - left aligned, Hebrew reads naturally RTL
           return (
             <div 
               key={lineIndex} 
               className="text-zinc-100 whitespace-pre mb-2"
-              style={containsHebrew ? { direction: 'ltr', unicodeBidi: 'bidi-override' } : undefined}
+              style={{ textAlign: 'left' }}
             >
               {line.text || '\u00A0'}
             </div>
@@ -287,7 +287,7 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
               {buildChordLine(line.chords!, line.text.length, containsHebrew)}
               <div 
                 className="text-zinc-100 whitespace-pre"
-                style={containsHebrew ? { direction: 'ltr', unicodeBidi: 'bidi-override' } : undefined}
+                style={{ textAlign: 'left' }}
               >
                 {line.text || '\u00A0'}
               </div>
