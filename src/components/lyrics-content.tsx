@@ -152,14 +152,16 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   }
 
   // Render a clickable chord
-  const renderChord = (chord: string, key: string | number) => {
+  const renderChord = (chord: string, key: string | number, compact: boolean = false) => {
     const isClickable = onChordClick && hasChordDiagram(chord)
     return (
       <span
         key={key}
         className={`text-emerald-400 font-bold ${
           isClickable
-            ? 'cursor-pointer hover:text-emerald-300 bg-emerald-500/20 px-0.5 rounded border border-emerald-500/40'
+            ? compact
+              ? 'cursor-pointer hover:text-emerald-300'
+              : 'cursor-pointer hover:text-emerald-300 bg-emerald-500/20 px-0.5 rounded border border-emerald-500/40'
             : ''
         }`}
         dir="ltr"
@@ -192,7 +194,7 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
         elements.push(' '.repeat(spaces))
       }
       
-      elements.push(renderChord(chord, `chord-${i}`))
+      elements.push(renderChord(chord, `chord-${i}`, true))
       currentPos = position + chord.length
     }
     
