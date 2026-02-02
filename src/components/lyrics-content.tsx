@@ -56,22 +56,44 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       chordRegex.lastIndex = 0 // Reset regex after test
       
       if (isChordOnlyLine) {
-        // For chord-only lines, preserve ORIGINAL positions from the content
-        // This keeps the spacing exactly as provided by the API
-        let currentPos = 0
+        // For chord-only lines, preserve ORIGINAL spacing from the content
+        // Parse the line and track positions WITHOUT brackets
+        let renderPos = 0  // Position in the rendered output (without brackets)
         while ((match = chordRegex.exec(line)) !== null) {
-          // Position is where this chord appears in the line
-          const position = match.index
+          // Calculate how many spaces were before this chord in the source
+          // by looking at characters between last match end and this match start
+          const spacesBeforeInSource = match.index - (chordRegex.lastIndex - match[0].length === 0 ? 0 : chordRegex.lastIndex - match[0].length)
           
           const chordContent = match[1] || match[2]
           const chordList = chordContent.trim().split(/\s+/).filter(c => c)
           
-          let pos = position
           for (const chord of chordList) {
             const transposedChord = transposeChord(chord, transpose)
-            chords.push({ chord: transposedChord, position: pos })
-            pos += transposedChord.length + 2 // +2 for [] brackets
+            chords.push({ chord: transposedChord, position: renderPos })
+            renderPos += transposedChord.length
           }
+          
+          // Add the spaces that follow this chord in source (until next chord or end)
+          // We'll calculate this by looking at what comes after the match
+        }
+        
+        // Re-parse to get correct spacing
+        chords.length = 0
+        chordRegex.lastIndex = 0
+        let lastMatchEnd = 0
+        renderPos = 0
+        
+        while ((match = chordRegex.exec(line)) !== null) {
+          // Spaces before this chord = characters between last match end and this match start
+          const spacesBefore = match.index - lastMatchEnd
+          renderPos += spacesBefore
+          
+          const chordContent = match[1] || match[2]
+          const transposedChord = transposeChord(chordContent.trim(), transpose)
+          chords.push({ chord: transposedChord, position: renderPos })
+          renderPos += transposedChord.length
+          
+          lastMatchEnd = match.index + match[0].length
         }
         
         if (chords.length > 0) {
