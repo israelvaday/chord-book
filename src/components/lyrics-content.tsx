@@ -232,8 +232,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       className="break-words overflow-x-auto max-w-full font-mono"
       style={{ 
         fontSize: `${fontSize}px`,
-        direction: containsHebrew ? 'rtl' : 'ltr',
-        textAlign: containsHebrew ? 'right' : 'left',
+        direction: 'ltr',
+        textAlign: 'left',
         lineHeight: '1.4',
         fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
       }}
