@@ -171,8 +171,6 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       return (
         <div
           className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
-          dir="ltr"
-          style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'bidi-override' }}
         >
           {prebuiltText}
         </div>
@@ -201,8 +199,6 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       return (
         <div
           className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
-          dir="ltr"
-          style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'bidi-override' }}
         >
           {lineText}
         </div>
@@ -225,8 +221,6 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
     return (
       <div
         className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
-        dir="ltr"
-        style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: containsHebrew ? 'bidi-override' : undefined }}
       >
         {elements}
       </div>
@@ -268,13 +262,11 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
         }
         
         if (line.type === 'lyrics') {
-          // Lyrics line - use LTR with bidi-override to match chord positions
+          // Lyrics line - natural direction, no bidi-override
           return (
             <div 
               key={lineIndex} 
               className="text-zinc-100 whitespace-pre mb-2"
-              dir="ltr"
-              style={containsHebrew ? { direction: 'ltr', unicodeBidi: 'bidi-override' } : undefined}
             >
               {line.text || '\u00A0'}
             </div>
@@ -288,8 +280,6 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
               {buildChordLine(line.chords!, line.text.length, containsHebrew)}
               <div 
                 className="text-zinc-100 whitespace-pre"
-                dir="ltr"
-                style={containsHebrew ? { direction: 'ltr', unicodeBidi: 'bidi-override' } : undefined}
               >
                 {line.text || '\u00A0'}
               </div>
