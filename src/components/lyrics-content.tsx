@@ -238,8 +238,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       className="break-words overflow-x-auto max-w-full font-mono"
       style={{ 
         fontSize: `${fontSize}px`,
-        direction: 'ltr',
-        textAlign: 'left',
+        direction: containsHebrew ? 'rtl' : 'ltr',
+        textAlign: containsHebrew ? 'right' : 'left',
         lineHeight: '1.4',
         fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
       }}
@@ -268,12 +268,13 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
         }
         
         if (line.type === 'lyrics') {
-          // Lyrics-only line - left aligned, Hebrew reads naturally RTL
+          // Lyrics line - use LTR with bidi-override to match chord positions
           return (
             <div 
               key={lineIndex} 
               className="text-zinc-100 whitespace-pre mb-2"
-              style={{ textAlign: 'left' }}
+              dir="ltr"
+              style={containsHebrew ? { direction: 'ltr', unicodeBidi: 'bidi-override' } : undefined}
             >
               {line.text || '\u00A0'}
             </div>
@@ -287,7 +288,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
               {buildChordLine(line.chords!, line.text.length, containsHebrew)}
               <div 
                 className="text-zinc-100 whitespace-pre"
-                style={{ textAlign: 'left' }}
+                dir="ltr"
+                style={containsHebrew ? { direction: 'ltr', unicodeBidi: 'bidi-override' } : undefined}
               >
                 {line.text || '\u00A0'}
               </div>
