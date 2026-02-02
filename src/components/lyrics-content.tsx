@@ -163,7 +163,7 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
             : ''
         }`}
         dir="ltr"
-        style={{ unicodeBidi: 'isolate', display: 'inline-block' }}
+        style={{ unicodeBidi: 'bidi-override', display: 'inline-block' }}
         onClick={() => isClickable && onChordClick?.(chord)}
         title={isClickable ? 'Click to see chord diagram' : undefined}
       >
@@ -200,7 +200,7 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       <div
         className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
         dir="ltr"
-        style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'isolate' }}
+        style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'bidi-override' }}
       >
         {elements}
       </div>
