@@ -152,7 +152,11 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   }
 
   // Render a clickable chord
-  const renderChord = (chord: string, key: string | number, compact: boolean = false) => {
+  const renderChord = (
+    chord: string,
+    key: string | number,
+    compact: boolean = false
+  ) => {
     const isClickable = onChordClick && hasChordDiagram(chord)
     return (
       <span
@@ -164,8 +168,6 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
               : 'cursor-pointer hover:text-emerald-300 bg-emerald-500/20 px-0.5 rounded border border-emerald-500/40'
             : ''
         }`}
-        dir="ltr"
-        style={{ unicodeBidi: 'bidi-override', display: 'inline-block' }}
         onClick={() => isClickable && onChordClick?.(chord)}
         title={isClickable ? 'Click to see chord diagram' : undefined}
       >
@@ -204,7 +206,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       return (
         <div
           className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
-          style={{ direction: 'ltr', textAlign: 'right', unicodeBidi: 'isolate' }}
+          dir="rtl"
+          style={{ direction: 'rtl', textAlign: 'right' }}
         >
           {lineText}
         </div>
@@ -227,8 +230,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
     return (
       <div
         className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
-        dir="ltr"
-        style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'bidi-override' }}
+        dir={containsHebrew ? 'rtl' : undefined}
+        style={containsHebrew ? { direction: 'rtl', textAlign: 'right' } : undefined}
       >
         {elements}
       </div>
