@@ -195,7 +195,10 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
     }
     
     return (
-      <div className="text-emerald-400 font-bold leading-tight select-none whitespace-pre">
+      <div
+        className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
+        style={{ direction: 'ltr', textAlign: 'left' }}
+      >
         {elements}
       </div>
     )
