@@ -162,6 +162,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
             ? 'cursor-pointer hover:text-emerald-300 bg-emerald-500/20 px-0.5 rounded border border-emerald-500/40'
             : ''
         }`}
+        dir="ltr"
+        style={{ unicodeBidi: 'isolate', display: 'inline-block' }}
         onClick={() => isClickable && onChordClick?.(chord)}
         title={isClickable ? 'Click to see chord diagram' : undefined}
       >
