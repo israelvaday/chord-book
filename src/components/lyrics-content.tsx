@@ -43,46 +43,76 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       const line = rawLines[i]
       
       // Extract chords and their positions
+      // Use [ch]...[/ch] format or [CHORD] format
       const chordRegex = /\[ch\](.*?)\[\/ch\]|\[([A-Ga-g#b0-9\s\/majmindimaugsusadd]+)\]/g
       let match
       let lastIndex = 0
       let textWithoutChords = ''
       const chords: { chord: string; position: number }[] = []
       
-      while ((match = chordRegex.exec(line)) !== null) {
-        const textBefore = line.slice(lastIndex, match.index)
-        const positionInText = textWithoutChords.length + textBefore.length
-        textWithoutChords += textBefore
-        
-        const chordContent = match[1] || match[2]
-        const chordList = chordContent.trim().split(/\s+/).filter(c => c)
-        
-        let pos = positionInText
-        for (const chord of chordList) {
-          const transposedChord = transposeChord(chord, transpose)
-          chords.push({ chord: transposedChord, position: pos })
-          pos += transposedChord.length + 1
+      // Check if this is a chord-only line (only chords and spaces, no other text)
+      const lineWithoutChords = line.replace(chordRegex, '').trim()
+      const isChordOnlyLine = lineWithoutChords === '' && chordRegex.test(line)
+      chordRegex.lastIndex = 0 // Reset regex after test
+      
+      if (isChordOnlyLine) {
+        // For chord-only lines, preserve ORIGINAL positions from the content
+        // This keeps the spacing exactly as provided by the API
+        let currentPos = 0
+        while ((match = chordRegex.exec(line)) !== null) {
+          // Position is where this chord appears in the line
+          const position = match.index
+          
+          const chordContent = match[1] || match[2]
+          const chordList = chordContent.trim().split(/\s+/).filter(c => c)
+          
+          let pos = position
+          for (const chord of chordList) {
+            const transposedChord = transposeChord(chord, transpose)
+            chords.push({ chord: transposedChord, position: pos })
+            pos += transposedChord.length + 2 // +2 for [] brackets
+          }
         }
         
-        lastIndex = match.index + match[0].length
-      }
-      textWithoutChords += line.slice(lastIndex)
-      
-      const hasChords = chords.length > 0
-      const hasText = textWithoutChords.trim() !== ''
-      
-      if (hasChords && hasText) {
-        // Line has both chords and text inline - combined format
-        result.push({ type: 'combined', text: textWithoutChords, chords })
-      } else if (hasChords && !hasText) {
-        // Chord-only line
-        result.push({ type: 'chords', text: '', chords })
-      } else if (hasText) {
-        // Text-only line
-        result.push({ type: 'lyrics', text: textWithoutChords })
+        if (chords.length > 0) {
+          result.push({ type: 'chords', text: '', chords })
+        } else {
+          result.push({ type: 'empty', text: '' })
+        }
       } else {
-        // Empty line
-        result.push({ type: 'empty', text: '' })
+        // Original logic for lines with text
+        while ((match = chordRegex.exec(line)) !== null) {
+          const textBefore = line.slice(lastIndex, match.index)
+          const positionInText = textWithoutChords.length + textBefore.length
+          textWithoutChords += textBefore
+          
+          const chordContent = match[1] || match[2]
+          const chordList = chordContent.trim().split(/\s+/).filter(c => c)
+          
+          let pos = positionInText
+          for (const chord of chordList) {
+            const transposedChord = transposeChord(chord, transpose)
+            chords.push({ chord: transposedChord, position: pos })
+            pos += transposedChord.length + 1
+          }
+          
+          lastIndex = match.index + match[0].length
+        }
+        textWithoutChords += line.slice(lastIndex)
+        
+        const hasChords = chords.length > 0
+        const hasText = textWithoutChords.trim() !== ''
+        
+        if (hasChords && hasText) {
+          // Line has both chords and text inline - combined format
+          result.push({ type: 'combined', text: textWithoutChords, chords })
+        } else if (hasText) {
+          // Text-only line
+          result.push({ type: 'lyrics', text: textWithoutChords })
+        } else {
+          // Empty line
+          result.push({ type: 'empty', text: '' })
+        }
       }
     }
     
