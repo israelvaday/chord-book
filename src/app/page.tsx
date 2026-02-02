@@ -35,6 +35,20 @@ export default function HomePage() {
     getGenres().then(setGenres)
   }, [])
 
+  // Deep link support: open a song by ID from query params (?song=10005781&type=chord)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const songParam = params.get('song')
+    const typeParam = params.get('type') as 'chord' | 'tab' | null
+
+    if (songParam && !Number.isNaN(Number(songParam))) {
+      const id = Number(songParam)
+      const contentType = typeParam === 'tab' ? 'tab' : 'chord'
+      loadSongById(id, contentType)
+    }
+  }, [])
+
   // Autocomplete using search API
   useEffect(() => {
     if (searchQuery.length < 2) {
@@ -96,6 +110,14 @@ export default function HomePage() {
     setLoading(true)
     const fullSong = await getSong(song.tab_id, song.content_type)
     setCurrentSong({ ...fullSong, content_type: song.content_type })
+    setView('song')
+    setLoading(false)
+  }
+
+  const loadSongById = async (tabId: number, contentType: 'chord' | 'tab' = 'chord') => {
+    setLoading(true)
+    const fullSong = await getSong(tabId, contentType)
+    setCurrentSong({ ...fullSong, content_type: contentType })
     setView('song')
     setLoading(false)
   }
