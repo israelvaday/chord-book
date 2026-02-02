@@ -57,47 +57,28 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       
       if (isChordOnlyLine) {
         // For chord-only lines, preserve ORIGINAL spacing from the content
-        // Parse the line and track positions WITHOUT brackets
-        let renderPos = 0  // Position in the rendered output (without brackets)
-        while ((match = chordRegex.exec(line)) !== null) {
-          // Calculate how many spaces were before this chord in the source
-          // by looking at characters between last match end and this match start
-          const spacesBeforeInSource = match.index - (chordRegex.lastIndex - match[0].length === 0 ? 0 : chordRegex.lastIndex - match[0].length)
-          
-          const chordContent = match[1] || match[2]
-          const chordList = chordContent.trim().split(/\s+/).filter(c => c)
-          
-          for (const chord of chordList) {
-            const transposedChord = transposeChord(chord, transpose)
-            chords.push({ chord: transposedChord, position: renderPos })
-            renderPos += transposedChord.length
-          }
-          
-          // Add the spaces that follow this chord in source (until next chord or end)
-          // We'll calculate this by looking at what comes after the match
-        }
-        
-        // Re-parse to get correct spacing
-        chords.length = 0
-        chordRegex.lastIndex = 0
+        // Build the display text by keeping exact spacing, just remove brackets
+        let displayLine = ''
         let lastMatchEnd = 0
-        renderPos = 0
+        chordRegex.lastIndex = 0
         
         while ((match = chordRegex.exec(line)) !== null) {
-          // Spaces before this chord = characters between last match end and this match start
-          const spacesBefore = match.index - lastMatchEnd
-          renderPos += spacesBefore
+          // Add spaces between last match and this one
+          const spacesBefore = line.slice(lastMatchEnd, match.index)
+          displayLine += spacesBefore
           
           const chordContent = match[1] || match[2]
           const transposedChord = transposeChord(chordContent.trim(), transpose)
-          chords.push({ chord: transposedChord, position: renderPos })
-          renderPos += transposedChord.length
+          chords.push({ chord: transposedChord, position: displayLine.length })
+          displayLine += transposedChord
           
           lastMatchEnd = match.index + match[0].length
         }
+        // Add any trailing spaces
+        displayLine += line.slice(lastMatchEnd)
         
         if (chords.length > 0) {
-          result.push({ type: 'chords', text: '', chords })
+          result.push({ type: 'chords', text: displayLine, chords })
         } else {
           result.push({ type: 'empty', text: '' })
         }
@@ -180,9 +161,23 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
   const buildChordLine = (
     chords: { chord: string; position: number }[],
     textLength: number,
-    textOnly: boolean = false
+    textOnly: boolean = false,
+    prebuiltText?: string
   ) => {
     if (!showChords || chords.length === 0) return null
+    
+    // For Hebrew chord-only lines, use prebuilt text if available
+    if (textOnly && prebuiltText) {
+      return (
+        <div
+          className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
+          dir="ltr"
+          style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'bidi-override' }}
+        >
+          {prebuiltText}
+        </div>
+      )
+    }
     
     // Sort by position
     const sorted = [...chords].sort((a, b) => a.position - b.position)
@@ -206,8 +201,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       return (
         <div
           className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
-          dir="rtl"
-          style={{ direction: 'rtl', textAlign: 'right' }}
+          dir="ltr"
+          style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'bidi-override' }}
         >
           {lineText}
         </div>
@@ -230,8 +225,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
     return (
       <div
         className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
-        dir={containsHebrew ? 'rtl' : undefined}
-        style={containsHebrew ? { direction: 'rtl', textAlign: 'right' } : undefined}
+        dir="ltr"
+        style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: containsHebrew ? 'bidi-override' : undefined }}
       >
         {elements}
       </div>
@@ -265,7 +260,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
               {buildChordLine(
                 line.chords!,
                 Math.max(...(line.chords?.map(c => c.position + c.chord.length) || [0])),
-                containsHebrew
+                containsHebrew,
+                line.text  // Pass prebuilt text for Hebrew
               )}
             </div>
           )
