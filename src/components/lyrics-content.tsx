@@ -189,7 +189,7 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
       // Add spaces before this chord
       const spaces = Math.max(0, position - currentPos)
       if (spaces > 0) {
-        elements.push(<span key={`space-${i}`}>{' '.repeat(spaces)}</span>)
+        elements.push(' '.repeat(spaces))
       }
       
       elements.push(renderChord(chord, `chord-${i}`))
@@ -199,7 +199,8 @@ export function LyricsContent({ content, onChordClick, chordDiagrams }: Props) {
     return (
       <div
         className="text-emerald-400 font-bold leading-tight select-none whitespace-pre"
-        style={{ direction: 'ltr', textAlign: 'left' }}
+        dir="ltr"
+        style={{ direction: 'ltr', textAlign: 'left', unicodeBidi: 'isolate' }}
       >
         {elements}
       </div>
